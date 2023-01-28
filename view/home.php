@@ -40,12 +40,30 @@
         <option value="Saturday">Saturday</option>
         <option value="Sunday">Sunday</option>
     </select>
-
+    <br>
     <input type="submit" value="Submit">
 
 </form>
 
 </html>
+
+<script>
+    var earliest = document.getElementById("earlyDept");
+    var latest = document.getElementById("lateReturn");
+
+    earliest.addEventListener("input", function() {
+
+        if (earliest.value >= latest.value) {
+            latest.value = earliest.value;
+        }
+    });
+    latest.addEventListener("input", function() {
+
+        if (latest.value <= earliest.value) {
+            latest.value = earliest.value;
+        }
+    });
+</script>
 
 <?php
 echo " <p class='flights'>";
@@ -53,36 +71,19 @@ $api_key = "319228101f366e4728ea650dcfc9cf21";
 
 if(isset($_POST['deptAirport'])){
     $origin = $_POST['deptAirport'];
-}
-
-if(isset($_POST['destAirport'])) {
     $destination = $_POST['destAirport'];
-}
-
-if(isset($_POST['lateReturn'])) {
     $return_date = date_create_from_format('Y-m-d', $_POST['lateReturn']);
-}
-
-if(isset($_POST['departDay'])) {
     $depart_day = $_POST['departDay'];
-}
-
-if(isset($_POST['returnDay'])) {
     $return_day = $_POST['returnDay'];
-}
+
 
 $depart_found = false;
 $return_found = false;
 
-if(isset($_POST['earlyDept'])) {
+
     $depart_date = date_create_from_format('Y-m-d', $_POST['earlyDept']);
 
     for ($date = $depart_date; $date <= $return_date; $date->modify('+1 day')) {
-        if ($depart_found && $return_found) {
-            echo apiCall($origin, $destination, $depart, $return);
-            $return_found = false;
-            $depart_found = false;
-        }
         if (!$depart_found && $date->format('l') == ucwords($depart_day)) {
             $depart = new DateTime();
             $depart = $date->format('Y-m-d');
@@ -93,10 +94,21 @@ if(isset($_POST['earlyDept'])) {
             $return = $date->format('Y-m-d');
             $return_found = true;
         }
+        if ($depart_found && $return_found) {
+            $flight_data = apiCall($origin, $destination, $depart, $return);
+            if ($flight_data == "") {
+                echo "No flights matching this criteria found";
+            } else {
+                echo $flight_data;
+            }
+            $return_found = false;
+            $depart_found = false;
+        }
 
     }
-
     echo "</p>";
+
+
 }
 
 function apiCall($origin, $destination, $depart, $return)
@@ -106,15 +118,13 @@ function apiCall($origin, $destination, $depart, $return)
 
     $ch = curl_init();
 
-    curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_URL, $url);
 
-    $data = curl_exec($ch);
-    $result = json_decode($data);
+    $result = json_decode(curl_exec($ch));
     $error = curl_error($ch);
 
-    curl_close($ch);
     $str = "";
     if ($error) {
         $str = $error;
@@ -126,7 +136,7 @@ function apiCall($origin, $destination, $depart, $return)
             $flights = $result->data->$destination;
             foreach ($flights as $flight) {
                 $str .= " Flight: " . $flight->airline . $flight->flight_number;
-                $str .= " Departure: " . $flight->departure_at;
+                $str .= " Outbound: " . $flight->departure_at;
                 $str .= " Return: " . $flight->return_at;
                 $str .= " Price: " . $flight->price;
                 $str .= "<br> <br>";
