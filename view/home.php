@@ -20,7 +20,8 @@
 <input type="date" id="lateReturn" name="lateReturn" min="<?= date('Y-m-d'); ?>" required>
 
     <label for="Day to depart on"> Departing weekday:</label>
-    <select name="departDay" id="departDay" required>
+    <select name="departDay" id="departDay">
+        <option disabled selected value> day of departure </option>
         <option value="Monday">Monday</option>
         <option value="Tuesday">Tuesday</option>
         <option value="Wednesday">Wednesday</option>
@@ -31,7 +32,9 @@
     </select>
 
     <label for="Day to return on" > Returning weekday:</label>
-    <select name="returnDay" id="returnDay" required>
+    <select name="returnDay" id="returnDay">
+
+        <option disabled selected value> day of return </option>
         <option value="Monday">Monday</option>
         <option value="Tuesday">Tuesday</option>
         <option value="Wednesday">Wednesday</option>
@@ -39,31 +42,182 @@
         <option value="Friday">Friday</option>
         <option value="Saturday">Saturday</option>
         <option value="Sunday">Sunday</option>
-    </select>
+
+         </select>
     <br>
     <input type="submit" value="Submit">
 
 </form>
 
 </html>
-
 <script>
+
+    function dateConversion(date) {
+        var date = new Date(date.value);
+        date = date.toLocaleDateString().split("/").reverse().join("-");
+        return new Date(date);
+
+    }
+
+    function getDateDifference(earliestObj, latestObj) {
+        var diff = latestObj.getTime() - earliestObj.getTime();
+        return diffDays = diff / (1000 * 60 * 60 * 24);
+    }
+
+    function resetDays(){
+        for (var i = 0; i < 8; i++) {
+            document.getElementById("returnDay").options[i].disabled = false;
+            document.getElementById("departDay").options[i].disabled = false;
+        }
+
+    }
+
+    function turnOffDays(){
+        for (var i = 0; i < 8; i++) {
+            document.getElementById("returnDay").options[i].disabled = true;
+            document.getElementById("departDay").options[i].disabled = true;
+        }
+
+    }
+
+    function correctReturnDays() {
+        var earliestObj = dateConversion(earliest);
+        var latestObj = dateConversion(latest);
+        var diffDays = getDateDifference(earliestObj, latestObj);
+
+        if (diffDays < 7) {
+            diffDays = getDateDifference(earliestObj, latestObj);
+
+            var day = earliestObj.getUTCDay();
+            var i = 0;
+            while (i <= diffDays) {
+                document.getElementById("returnDay").options[day].disabled = false;
+                day++;
+                if (day === 8) {
+                    day = 1;
+                }
+                i++;
+            }
+        } else {
+            resetDays();
+        }
+    }
+
+    function correctDepartDays() {
+        var earliestObj = dateConversion(earliest);
+        var latestObj = dateConversion(latest);
+        var diffDays = getDateDifference(earliestObj, latestObj);
+        if (diffDays < 7) {
+            diffDays = getDateDifference(earliestObj, latestObj);
+            var day = earliestObj.getUTCDay();
+            var i = 0;
+            while (i <= diffDays) {
+                document.getElementById("departDay").options[day].disabled = false;
+                day++;
+                if (day === 8) {
+                    day = 1;
+                }
+                i++;
+            }
+        } else {
+            resetDays();
+        }
+    }
+
+    function correctDays() {
+        turnOffDays();
+
+        correctReturnDays();
+
+        correctDepartDays();
+    }
+
+    function forceDepartBeforeReturn() {
+        forceDepartBeforeReturnDate();
+        forceDepartBeforeReturnDay();
+    }
+
+    function forceDepartBeforeReturnDate() {
+        if (latest.value <= earliest.value) {
+
+            latest.value = earliest.value;
+        }
+    }
+
+    function dayToInt(day) {
+        if (day === "Monday") {
+            var num = 1;
+        }
+        if (day === "Tuesday") {
+            var num = 2;
+        }
+        if (day === "Wednesday") {
+            var num = 3;
+        }
+        if (day === "Thursday") {
+            var num = 4;
+        }
+        if (day === "Friday") {
+            var num = 5;
+        }
+        if (day === "Saturday") {
+            var num = 6;
+        }
+        if (day === "Sunday") {
+            var num = 7;
+        }
+
+        return num;
+    }
+
+    function forceDepartBeforeReturnDay() {
+        var i = 1;
+        var earliestInt = dayToInt(document.getElementById("departDay").value);
+        var earliestObj = dateConversion(earliest);
+        var latestObj = dateConversion(latest);
+        var diffDays = getDateDifference(earliestObj, latestObj);
+        if (diffDays < 7 && earliestInt >= 1 && earliestInt <=7) {
+            while (i < earliestInt) {
+                document.getElementById("returnDay").options[i].disabled = true;
+                i++;
+            }
+        }
+    }
+
     var earliest = document.getElementById("earlyDept");
     var latest = document.getElementById("lateReturn");
+    var earliestDay = dateConversion(document.getElementById("departDay"));
+    var latestDay =  dateConversion(document.getElementById("returnDay"));
+
 
     earliest.addEventListener("input", function() {
 
-        if (earliest.value >= latest.value) {
-            latest.value = earliest.value;
-        }
+        correctDays();
+
+        forceDepartBeforeReturn();
+
     });
     latest.addEventListener("input", function() {
 
-        if (latest.value <= earliest.value) {
-            latest.value = earliest.value;
-        }
+        correctDays();
+
+        forceDepartBeforeReturn();
+
+    });
+
+    document.getElementById("departDay").addEventListener("change", function() {
+
+        forceDepartBeforeReturn();
+
+    });
+
+    document.getElementById("returnDay").addEventListener("change", function() {
+
+        forceDepartBeforeReturn();
+
     });
 </script>
+
 
 <?php
 echo " <p class='flights'>";
@@ -73,15 +227,13 @@ if(isset($_POST['deptAirport'])){
     $origin = $_POST['deptAirport'];
     $destination = $_POST['destAirport'];
     $return_date = date_create_from_format('Y-m-d', $_POST['lateReturn']);
+    $depart_date = date_create_from_format('Y-m-d', $_POST['earlyDept']);
     $depart_day = $_POST['departDay'];
     $return_day = $_POST['returnDay'];
 
+    $depart_found = false;
+    $return_found = false;
 
-$depart_found = false;
-$return_found = false;
-
-
-    $depart_date = date_create_from_format('Y-m-d', $_POST['earlyDept']);
 
     for ($date = $depart_date; $date <= $return_date; $date->modify('+1 day')) {
         if (!$depart_found && $date->format('l') == ucwords($depart_day)) {
@@ -126,10 +278,10 @@ function apiCall($origin, $destination, $depart, $return)
     $error = curl_error($ch);
 
     $str = "";
+    echo " <p class='flights'>";
     if ($error) {
         $str = $error;
     } else {
-        echo " <p class='flights'>";
         if (empty($result->data->$destination)) {
             $str = "";
         } else {
