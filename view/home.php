@@ -233,6 +233,7 @@ if(isset($_POST['deptAirport'])){
 
     $depart_found = false;
     $return_found = false;
+    $no_data = true;
 
 
     for ($date = $depart_date; $date <= $return_date; $date->modify('+1 day')) {
@@ -248,9 +249,8 @@ if(isset($_POST['deptAirport'])){
         }
         if ($depart_found && $return_found) {
             $flight_data = apiCall($origin, $destination, $depart, $return);
-            if ($flight_data == "") {
-                echo "No flights matching this criteria found";
-            } else {
+            if ($flight_data != "") {
+                $no_data = false;
                 echo $flight_data;
             }
             $return_found = false;
@@ -258,8 +258,12 @@ if(isset($_POST['deptAirport'])){
         }
 
     }
-    echo "</p>";
 
+    if ($no_data) {
+        echo "No flights matching this criteria found";
+    }
+
+    echo "</p>";
 
 }
 
