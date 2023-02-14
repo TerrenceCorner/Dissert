@@ -54,14 +54,13 @@
 
     function dateConversion(date) {
         var date = new Date(date.value);
-        date = date.toLocaleDateString().split("/").reverse().join("-");
-        return new Date(date);
+        return new Date(date.toLocaleDateString().split("/").reverse().join("-"));
 
     }
 
     function getDateDifference(earliestObj, latestObj) {
         var diff = latestObj.getTime() - earliestObj.getTime();
-        return diffDays = diff / (1000 * 60 * 60 * 24);
+        return diffDays = diff / (60 * 60 * 24 * 1000);
     }
 
     function resetDays(){
@@ -87,7 +86,6 @@
 
         if (diffDays < 7) {
             diffDays = getDateDifference(earliestObj, latestObj);
-
             var day = earliestObj.getUTCDay();
             var i = 0;
             while (i <= diffDays) {
@@ -239,12 +237,12 @@ if(isset($_POST['deptAirport'])){
     for ($date = $depart_date; $date <= $return_date; $date->modify('+1 day')) {
         if (!$depart_found && $date->format('l') == ucwords($depart_day)) {
             $depart = new DateTime();
-            $depart = $date->format('Y-m-d');
+            $depart = date("d.m.Y", strtotime($date->format('Y-m-d')));
             $depart_found = true;
         }
         elseif (!$return_found && $date->format('l') == ucwords($return_day)) {
             $return = new DateTime();
-            $return = $date->format('Y-m-d');
+            $return = date("d.m.Y", strtotime($date->format('Y-m-d')));
             $return_found = true;
         }
         if ($depart_found && $return_found) {
@@ -269,42 +267,50 @@ if(isset($_POST['deptAirport'])){
 
 function apiCall($origin, $destination, $depart, $return)
 {
-
-    $url = "https://api.travelpayouts.com/v1/prices/cheap?origin=$origin&destination=$destination&depart_date=$depart&return_date=$return&currency=gbp&token=319228101f366e4728ea650dcfc9cf21";
-
     $ch = curl_init();
+    $value = "";
+    $url = "https://www.azair.eu/azfin.php?tp=0&searchtype=nonflexi&srcAirport=London+%28Luton%29+%5B$origin%5D&srcTypedText=$origin&srcFreeTypedText=&srcMC=&srcFreeAirport=&dstAirport=Dublin+%5B$destination%5D&dstTypedText=dUBLIN&dstFreeTypedText=&dstMC=&adults=1&children=0&infants=0&minHourStay=0%3A45&maxHourStay=23%3A20&minHourOutbound=0%3A00&maxHourOutbound=24%3A00&minHourInbound=0%3A00&maxHourInbound=24%3A00&dstFreeAirport=&depdate=$depart&arrdate=$return&flex=0&nextday=0&autoprice=true&currency=EUR&wizzxclub=false&flyoneclub=false&blueairbenefits=false&megavolotea=false&schengen=false&transfer=false&samedep=true&samearr=true&dep0=true&dep1=true&dep2=true&dep3=true&dep4=true&dep5=true&dep6=true&arr0=true&arr1=true&arr2=true&arr3=true&arr4=true&arr5=true&arr6=true&maxChng=1&isOneway=return&resultSubmit=Search";
 
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt_array($ch, array(
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ));
 
-    $result = json_decode(curl_exec($ch));
-    $error = curl_error($ch);
+    $output = curl_exec($ch);
 
-    $str = "";
-    echo " <p class='flights'>";
-    if ($error) {
-        $str = $error;
-    } else {
-        if (empty($result->data->$destination)) {
-            $str = "";
-        } else {
-            $flights = $result->data->$destination;
-            foreach ($flights as $flight) {
-                $str .= " Flight: " . $flight->airline . $flight->flight_number;
-                $str .= " Outbound: " . $flight->departure_at;
-                $str .= " Return: " . $flight->return_at;
-                $str .= " Price: " . $flight->price;
-                $str .= "<br> <br>";
+    $doc = new DOMDocument();
+    @$doc->loadHTML($output);
 
+    $xpath = new DOMXPath($doc);
+
+// Use XPath to find the reslist element
+    $reslist = $xpath->query('//*[@id="reslist"]')->item(0);
+
+// If the reslist element was found
+    if ($reslist) {
+        // Loop through each child node of the reslist element
+        foreach ($reslist->childNodes as $node) {
+            // Do something with each node...
+
+            $flightDetail = explode(" ", $node->nodeValue);
+
+            if (sizeof($flightDetail) > 3) {
+                echo $flightDetail[6];
+                print_r($flightDetail);
+                echo "hey". "<br>";
             }
         }
-
+    } else {
+        // Handle error - reslist element not found
+        echo "reslist element not found";
     }
 
-    return $str;
+    return $value;
 
 }
+
+
 
 ?>
 
